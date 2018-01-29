@@ -1,149 +1,125 @@
-// forked from https://github.com/superguigui/Wagner/blob/master/example/index.js
-
 import * as THREE from 'three'
-import dat from 'dat-gui'
-import WAGNER from '@superguigui/wagner/'
 import PromoApplication from 'views/PromoApplication'
-import BoxBlurPass from '@superguigui/wagner/src/passes/box-blur/BoxBlurPass'
-import FXAAPass from '@superguigui/wagner/src/passes/fxaa/FXAAPass'
-import ZoomBlurPassfrom from '@superguigui/wagner/src/passes/zoom-blur/ZoomBlurPass'
-import MultiPassBloomPass from '@superguigui/wagner/src/passes/bloom/MultiPassBloomPass'
+import Perlin from './../libs/perlin';
 
 class Promo extends PromoApplication {
 
   constructor() {
     super();
-    this.cubes = [];
 
-    this.params = {
-      usePostProcessing: true,
-      useFXAA: false,
-      useBlur: false,
-      useBloom: false
-    };
+    this.mouseDown = false;
+    this.mouseX = window.innerWidth / 2;
+    this.mouseY = window.innerHeight / 2;
+
+    this.font = undefined;
+    this.titleGeo = null;
+    this.subTitleGeo = null;
+    this.materials = null;
+    this.titleMesh = null;
+    this.subTitleMesh = null;
+    this.materials = [
+      new THREE.MeshPhongMaterial( { color: 0xffffff, flatShading: true } ), // front
+      new THREE.MeshPhongMaterial( { color: 0xffffff } ) // side
+    ];
 
     const light = new THREE.PointLight(0xFFFFFF, 1);
     light.position.copy(this._camera.position);
     this._scene.add(light);
 
-    // this.material = new THREE.MeshPhongMaterial({color: 0x3a9ceb});
-    // let c;
-    // for (let i = 0; i < 100; i++) {
-    //   c = this.addCube();
-    //   this.cubes.push(c);
-    //   this._scene.add(c);
-    // }
-
-    this.drawImage();
-    window.addEventListener('mousemove', this.onMouseMove.bind(this), false);
-
-    this.initPostprocessing();
-    this.initGui();
-
+    this.loadFont();
     this.animate();
+
+    window.addEventListener('resize', this.onWindowResize.bind(this), false);
+    window.addEventListener('mousemove', this.onMouseMove.bind(this), false);
   }
 
-  drawImage() {
-    let canvas2d = document.createElement('canvas');
-    let ctx = canvas2d.getContext('2d');
-    let size = 500;
-    canvas2d.width = window.innerWidth;
-    canvas2d.height = window.innerHeight;
-  
-    var img = new Image();   
-    img.crossOrigin = 'anonymous';
-    img.addEventListener('load', () => {
-      
-      ctx.drawImage(img, 0, 0, size, size);
-      document.body.appendChild(canvas2d);
-  
-      let data = ctx.getImageData(0, 0, size, size);
-      data = data.data;
-  
-      let material = new THREE.LineBasicMaterial({
-        color: 0xffffff
-      });
-
-      for (var y = 0; y < size; y++) {
-        let geometry = new THREE.Geometry();
-        let line = new THREE.Line(geometry, material);
-  
-        for (var x = 0; x < size; x++) {
-          var bright = data[(size * y + x) * 4];
-          let vector = new THREE.Vector3(x - 250, y - 250, bright/10 + 50);
-          geometry.vertices.push(vector);
-        }
-        
-        line.rotation.z = Math.PI
-        
-        this._scene.add(line);
-      }
-  
-    }, false);
-    img.src = './assets/textures/avatar.jpg';
+  loadFont() {
+    var loader = new THREE.FontLoader();
+    loader.load('assets/fonts/monospace.typeface.json', (font) => {
+      this.font = font;
+      this.createTitle('Pavel Gonzales');
+      this.createSubTitle('Front-end developer');
+    } );
   }
 
-  // addCube() {
-  //   let cube = new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30), this.material);
-
-  //   cube.position.set(
-  //     Math.random() * 600 - 300,
-  //     Math.random() * 600 - 300,
-  //     Math.random() * -500
-  //   );
-
-  //   cube.rotation.set(
-  //     Math.random() * Math.PI * 2,
-  //     Math.random() * Math.PI * 2,
-  //     Math.random() * Math.PI * 2
-  //   );
-  //   return cube;
-  // }
-
-  initPostprocessing() {
-    this._renderer.autoClearColor = true;
-    this.composer = new WAGNER.Composer(this._renderer);
-    this.fxaaPass = new FXAAPass();
-    this.boxBlurPass = new BoxBlurPass(3, 3);
-    this.bloomPass = new MultiPassBloomPass({
-      blurAmount: 2,
-      applyZoomBlur: true
+  createTitle(text) {
+    this.titleGeo = new THREE.TextGeometry(text, {
+      font: this.font,
+      size: window.innerWidth * 3.64583333 / 100,
+      height: 1,
+      curveSegments: 4,
+      bevelThickness: 2,
+      bevelSize: 0,
+      bevelEnabled: true,
+      material: 0,
+      extrudeMaterial: 1
     });
-  }
-  
-  initGui() {
-    const gui = new dat.GUI();
-    gui.add(this.params, 'usePostProcessing');
-    gui.add(this.params, 'useFXAA');
-    gui.add(this.params, 'useBlur');
-    gui.add(this.params, 'useBloom');
-    return gui;
+    this.titleGeo.computeBoundingBox();
+    this.titleGeo.computeVertexNormals();
+
+    const centerOffset = -0.5 * ( this.titleGeo.boundingBox.max.x - this.titleGeo.boundingBox.min.x );
+    this.titleMesh = new THREE.Mesh( this.titleGeo, this.materials );
+    this.titleMesh.position.x = centerOffset;
+    this.titleMesh.position.y = window.innerWidth * 0.52083333333 / 100;;
+    this.titleMesh.position.z = 0;
+
+    this.titleMesh.rotation.x = 0;
+    this.titleMesh.rotation.y = Math.PI * 2;
+    this._scene.add(this.titleMesh);
   }
 
-  onMouseMove(e) {
-    this._camera.rotation.y = -(event.clientX - window.innerWidth * 0.5) * 0.0007;
-    this._camera.rotation.x = -(event.clientY - window.innerHeight * 0.5) * 0.0007;
-    // this.light.rotation.y = (event.clientX - window.innerWidth * 0.5) * 0.0007;
-    // this.light.rotation.x = (event.clientY - window.innerHeight * 0.5) * 0.0007;
+  createSubTitle(text) {
+    this.subTitleGeo = new THREE.TextGeometry(text, {
+      font: this.font,
+      size: window.innerWidth * 1.5625 / 100,
+      height: 1,
+      curveSegments: 4,
+      bevelThickness: 2,
+      bevelSize: 0,
+      bevelEnabled: true,
+      material: 0,
+      extrudeMaterial: 1
+    });
+    this.subTitleGeo.computeBoundingBox();
+    this.subTitleGeo.computeVertexNormals();
+
+    const centerOffset = -0.5 * ( this.subTitleGeo.boundingBox.max.x - this.subTitleGeo.boundingBox.min.x );
+    this.subTitleMesh = new THREE.Mesh( this.subTitleGeo, this.materials );
+    this.subTitleMesh.position.x = centerOffset;
+    this.subTitleMesh.position.y = window.innerWidth * -2.08333333333 / 100;
+    this.subTitleMesh.position.z = 0;
+
+    this.subTitleMesh.rotation.x = 0;
+    this.subTitleMesh.rotation.y = Math.PI * 2;
+    this._scene.add(this.subTitleMesh);
+  }
+
+  onMouseMove(event) {
+    const sensitivity = 0.05;
+    event.preventDefault();
+    
+    const deltaX = event.clientX - this.mouseX;
+    const deltaY = event.clientY - this.mouseY;
+    this.mouseX = event.clientX;
+    this.mouseY = event.clientY;
+    this._camera.rotation.x -= deltaY / (1000 / sensitivity);
+    this._camera.rotation.y -= deltaX / (1000 / sensitivity);
+  }
+
+  onWindowResize() {
+    // this.titleMesh.geometry.scale(0.8, 0.8, 0.8)
+    // this.subTitleMesh.geometry.scale(0.8, 0.8, 0.8)
+    // this.createTitle('Pavel Gonzales', 70 * 100 / window.innerWidth  );
+    // this.createSubTitle('Front-end developer', 30 * 100 / window.innerWidth  );
   }
 
   animate() {
+    // this._camera.lookAt(this._scene.position);
     super.animate();
-    for (let i = 0; i < this.cubes.length; i++) {
-      this.cubes[i].rotation.y += 0.01 + ((i - this.cubes.length) * 0.00001);
-      this.cubes[i].rotation.x += 0.01 + ((i - this.cubes.length) * 0.00001);
-    }
-    if (this.params.usePostProcessing) {
-      this.composer.reset();
-      this.composer.render(this._scene, this._camera);
-      if (this.params.useFXAA) this.composer.pass(this.fxaaPass);
-      if (this.params.useBlur) this.composer.pass(this.boxBlurPass);
-      if (this.params.useBloom) this.composer.pass(this.bloomPass);
-      this.composer.toScreen();
-    }
-    else {
-      this._renderer.render(this._scene, this._camera);
-    }
+    // var timer = new Date().getTime() * 0.0005;
+    // this._camera.position.x = Math.floor(Math.cos( timer ) * 200);
+    // this._camera.position.z = Math.floor(Math.sin( timer ) * 200);
+    this._renderer.render(this._scene, this._camera);
   }
 }
 

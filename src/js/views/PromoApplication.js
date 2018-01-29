@@ -8,7 +8,7 @@ class PromoApplication {
     this._camera.position.z = 400;
 
     this._scene = new THREE.Scene();
-    this._scene.add(this.createRoom())
+    // this._scene.add(this.createRoom())
 
     this._renderer = new THREE.WebGLRenderer();
     this._renderer.setPixelRatio(window.devicePixelRatio);

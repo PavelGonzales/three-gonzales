@@ -1,6 +1,15 @@
 import * as THREE from 'three'
 import PromoApplication from 'views/PromoApplication'
-import Perlin from './../libs/perlin';
+import TWEEN from '@tweenjs/tween.js'
+import Perlin from './../libs/perlin'
+
+import './../libs/CopyShader'
+import './../libs/DotScreenShader'
+import './../libs/RGBShiftShader'
+
+import './../libs/EffectComposer'
+import './../libs/RenderPass'
+import './../libs/ShaderPass'
 
 class Promo extends PromoApplication {
 
@@ -22,9 +31,43 @@ class Promo extends PromoApplication {
       new THREE.MeshPhongMaterial( { color: 0xffffff } ) // side
     ];
 
-    const light = new THREE.PointLight(0xFFFFFF, 1);
-    light.position.copy(this._camera.position);
-    this._scene.add(light);
+    this.light = new THREE.PointLight( 0xffffff, 1.5, 2000);
+
+    this.light.color.setHSL(0.995, 0.5, 0.9);
+    this.light.position.copy(this._camera.position);
+    this.light.position.z = 50;
+    this._scene.add(this.light);
+
+
+
+    this._controls.enablePan = false;
+		this._controls.enableZoom = false; 
+		this._controls.enableRotate = false; 
+		// this._controls.enableDamping = true;
+		// this._controls.minPolarAngle = 0.8;
+		// this._controls.maxPolarAngle = 2.4;
+		// this._controls.dampingFactor = 0.07;
+		// this._controls.rotateSpeed = 0.07;
+
+    // postprocessing
+
+    this.composer = new THREE.EffectComposer( this._renderer );
+    this.composer.addPass( new THREE.RenderPass( this._scene, this._camera ) );
+
+    var effect = new THREE.ShaderPass( THREE.DotScreenShader );
+    effect.uniforms[ 'scale' ].value = 10;
+    this.composer.addPass( effect );
+
+    var effect = new THREE.ShaderPass( THREE.RGBShiftShader );
+    effect.uniforms[ 'amount' ].value = 0.0001;
+    effect.renderToScreen = true;
+    this.composer.addPass( effect );
+
+    console.log('this.composer', this.composer)
+    console.log(effect);
+    
+
+    //
 
     this.loadFont();
     this.animate();
@@ -95,15 +138,37 @@ class Promo extends PromoApplication {
   }
 
   onMouseMove(event) {
-    const sensitivity = 0.05;
+    const sensitivity = 0.001;
     event.preventDefault();
     
+    var position = { 
+      x: deltaX, 
+      y: deltaY 
+    };
     const deltaX = event.clientX - this.mouseX;
     const deltaY = event.clientY - this.mouseY;
     this.mouseX = event.clientX;
     this.mouseY = event.clientY;
-    this._camera.rotation.x -= deltaY / (1000 / sensitivity);
-    this._camera.rotation.y -= deltaX / (1000 / sensitivity);
+
+    var from = {
+      x : 0,
+      y : 0,
+    };
+    var to = {
+      x : 100,
+      y : 100,
+    };
+
+    this.light.position.x = event.clientX - window.innerWidth / 2;
+    this.light.position.y = event.clientY - window.innerHeight / 2;
+    var tween = new TWEEN.Tween(from)
+      .to(to, 1500)
+      .easing(TWEEN.Easing.Quartic.Out)
+      .onUpdate((res) =>{
+        this._camera.rotation.x -= deltaY / (1000 / sensitivity)
+        this._camera.rotation.y -= deltaX / (1000 / sensitivity);
+      }).start()
+
   }
 
   onWindowResize() {
@@ -116,9 +181,11 @@ class Promo extends PromoApplication {
   animate() {
     // this._camera.lookAt(this._scene.position);
     super.animate();
+    TWEEN.update();
     // var timer = new Date().getTime() * 0.0005;
     // this._camera.position.x = Math.floor(Math.cos( timer ) * 200);
     // this._camera.position.z = Math.floor(Math.sin( timer ) * 200);
+    // this.composer.render();
     this._renderer.render(this._scene, this._camera);
   }
 }

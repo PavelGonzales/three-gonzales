@@ -4,11 +4,11 @@ import 'three/examples/js/controls/OrbitControls'
 class PromoApplication {
   
   constructor() {
-    this._camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
-    this._camera.position.z = 400;
+    this._camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
+    this._camera.position.z = 4000;
 
     this._scene = new THREE.Scene();
-    // this._scene.add(this.createRoom())
+    this._scene.add(this.createRoom())
 
     this._renderer = new THREE.WebGLRenderer();
     this._renderer.setPixelRatio(window.devicePixelRatio);
@@ -34,7 +34,7 @@ class PromoApplication {
   }
 
   createRoom() {
-    const geometry = new THREE.BoxGeometry(700, 700, 700, 10, 10, 10);
+    const geometry = new THREE.BoxGeometry(7000, 7000, 7000, 10, 10, 10);
     const material = new THREE.MeshBasicMaterial({color: 0xfffff, wireframe: true});
     const cube = new THREE.Mesh(geometry, material);
     return cube;
